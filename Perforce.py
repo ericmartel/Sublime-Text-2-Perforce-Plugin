@@ -123,9 +123,8 @@ class PerforceAutoAdd(sublime_plugin.EventListener):
         if(not autoadd):
             return
 
-        if(view.is_dirty()):
-            folder_name, filename = os.path.split(view.file_name())
-            self.preSaveIsFileInDepot = IsFileInDepot(folder_name, filename)
+        folder_name, filename = os.path.split(view.file_name())
+        self.preSaveIsFileInDepot = IsFileInDepot(folder_name, filename)
 
     def on_post_save(self, view):
         if(self.preSaveIsFileInDepot == -1):
