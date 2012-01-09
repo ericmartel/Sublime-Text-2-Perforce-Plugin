@@ -11,9 +11,9 @@ import stat
 import subprocess
 
 # Plugin Settings
-warningsenabled = False; # will output messages when warnings happen
-autocheckout = True; # when true, any file within the client spec will be checked out when saving if read only 
-autoadd = True; # when true, any file within the client spec that doesn't exist during the presave will be added
+# perforce_warnings_enabled # will output messages when warnings happen
+# perforce_auto_checkout # when true, any file within the client spec will be checked out when saving if read only   
+# perforce_auto_add # when true, any file within the client spec that doesn't exist during the presave will be added
 
 # Utility functions
 def IsFolderUnderClientRoot(in_folder):
@@ -81,7 +81,9 @@ def Checkout(in_filename):
 class PerforceAutoCheckout(sublime_plugin.EventListener):  
     def on_pre_save(self, view):
         # check if this part of the plugin is enabled
-        if(not autocheckout):
+        if(not view.settings().get('perforce_auto_checkout', True)):
+            if(view.settings().get('perforce_warnings_enabled', False)):
+                print "Perforce [warning]: Auto Checkout disabled"
             return
               
         if(view.is_dirty()):
@@ -89,7 +91,7 @@ class PerforceAutoCheckout(sublime_plugin.EventListener):
             if(success >= 0):
                 print "Perforce:", message
             else:
-                if(warningsenabled):
+                if(view.settings().get('perforce_warnings_enabled', False)):
                     print "Perforce [warning]:", message
 
 class PerforceCheckoutCommand(sublime_plugin.TextCommand):
@@ -99,7 +101,7 @@ class PerforceCheckoutCommand(sublime_plugin.TextCommand):
             if(success >= 0):
                 print "Perforce:", message
             else:
-                if(warningsenabled):
+                if(view.settings().get('perforce_warnings_enabled', False)):
                     print "Perforce [warning]:", message
 
 # Add section
@@ -120,7 +122,9 @@ class PerforceAutoAdd(sublime_plugin.EventListener):
         self.preSaveIsFileInDepot = 0
 
         # check if this part of the plugin is enabled
-        if(not autoadd):
+        if(not view.settings().get('perforce_auto_add', True)):
+            if(view.settings().get('perforce_warnings_enabled', False)):
+                print "Perforce [warning]: Auto Add disabled"
             return
 
         folder_name, filename = os.path.split(view.file_name())
@@ -146,5 +150,5 @@ class PerforceAddCommand(sublime_plugin.TextCommand):
             if(success >= 0):
                 print "Perforce:", message
             else:
-                if(warningsenabled):
+                if(view.settings().get('perforce_warnings_enabled', False)):
                     print "Perforce [warning]:", message
