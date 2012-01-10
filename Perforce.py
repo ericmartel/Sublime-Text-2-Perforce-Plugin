@@ -35,8 +35,10 @@ def IsFolderUnderClientRoot(in_folder):
     if(endindex == -1):
         return -1, "Unexpected output from 'p4 info'."
 
-    clientroot = result[startindex:endindex].strip()
-    clientrootindex = in_folder.lower().find(clientroot.lower());
+    # convert all paths to forward slashes 
+    convertedclientroot = result[startindex:endindex].strip().replace('\\', '/').lower();
+    convertedfolder = in_folder.replace('\\', '/').lower();
+    clientrootindex = convertedfolder.find(convertedclientroot);
 
     if(clientrootindex == -1):
         return 0
