@@ -1,0 +1,30 @@
+[
+    {
+        "caption": "Tools",
+        "mnemonic": "t",
+        "id": "tools",
+        "children":
+        [
+            {
+                "caption": "Perforce",
+                "mnemonic": "f",
+                "id": "package-settings",
+                "children":
+                [
+                    {
+                        "command": "perforce_checkout",
+                        "caption": "P4 Checkout"
+                    },
+                    {
+                        "command": "perforce_add",
+                        "caption": "P4 Add"
+                    },
+                    {
+                        "command": "perforce_revert",
+                        "caption": "P4 Revert"
+                    }
+                ]
+            }
+        ]
+    }
+]

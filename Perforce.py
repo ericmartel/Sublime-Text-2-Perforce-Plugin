@@ -1,7 +1,15 @@
 # Written by Eric Martel (emartel@gmail.com / www.ericmartel.com)
 # Inspired by https://gist.github.com/1065808
 
-# to add a keyboard shortcut, call perforce_add or perforce_checkout
+# available keyboard shortcuts
+#   perforce_add
+#   perforce_checkout
+#   perforce_revert
+
+# changelog
+# Eric Martel - first implementation of add / checkout
+# Tomek Wytrebowicz & Eric Martel - handling of forward slashes in clientspec folder
+# Rocco De Angelis & Eric Martel - first implementation of revert
 
 import sublime
 import sublime_plugin
@@ -38,11 +46,11 @@ def IsFolderUnderClientRoot(in_folder):
     # convert all paths to forward slashes 
     convertedclientroot = result[startindex:endindex].strip().replace('\\', '/').lower();
     convertedfolder = in_folder.replace('\\', '/').lower();
-    clientrootindex = convertedfolder.find(convertedclientroot);
-
+    clientrootindex = convertedfolder.find(convertedclientroot); 
+    
     if(clientrootindex == -1):
         return 0
-
+    
     return 1
 
 
@@ -154,3 +162,34 @@ class PerforceAddCommand(sublime_plugin.TextCommand):
             else:
                 if(view.settings().get('perforce_warnings_enabled', False)):
                     print "Perforce [warning]:", message
+
+# Revert section
+def Revert(in_folder, in_filename):
+    # revert the file
+    command = 'p4 revert ' + in_filename
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
+    result, err = p.communicate()
+
+    if(not err):
+        return 1, result.strip()
+    else:
+        return 0, err.strip()
+
+class PerforceRevertCommand(sublime_plugin.TextCommand):
+    def run_(self, args): # revert cannot be called when an Edit object exists, manually handle the run routine
+        if(self.view.file_name()):
+            folder_name, filename = os.path.split(self.view.file_name())
+
+            if(IsFileInDepot(folder_name, filename)):
+                success, message = Revert(folder_name, filename)
+                if(success): # the file was properly reverted, ask Sublime Text to refresh the view
+                    self.view.run_command('revert');
+            else:
+                success = 0
+                message = "File is not under the client root."
+
+            if(success >= 0):
+                print "Perforce:", message
+            else:
+                if(view.settings().get('perforce_warnings_enabled', False)):
+                    print "Perforce [warning]:", message        
