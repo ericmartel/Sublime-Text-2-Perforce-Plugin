@@ -1,0 +1,8 @@
+Perforce integration 1.0.3 Changelog:
+
+New Features
+ - Added a List of Checked Out files with their corresponding changelists and local paths that allow easy opening of these files
+
+ - Added diff and Graphical Diff with Depot
+
+ - Cleaned up the settings usage for Sublime Text 2, all settings are now in Perforce.sublime-settings

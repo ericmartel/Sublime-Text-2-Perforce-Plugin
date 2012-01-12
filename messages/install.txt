@@ -1,0 +1,9 @@
+Perforce integration by Eric Martel (emartel@gmail.com / www.ericmartel.com)
+
+Work is still in progress, please review Perforce.py for all available commands and Perforce.sublime-settings to control which features are enabled.
+
+Please direct any feedback to emartel@gmail.com or through github at https://github.com/ericmartel/Sublime-Text-2-Perforce-Plugin.
+
+Thank your for your support.
+
+Eric Martel
