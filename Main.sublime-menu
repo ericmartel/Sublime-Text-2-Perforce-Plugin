@@ -30,6 +30,10 @@
                     {
                         "command": "perforce_graphical_diff_with_depot",
                         "caption": "P4 Graphical Diff with Depot"
+                    },
+                    {
+                        "command": "perforce_list_checked_out_files",
+                        "caption": "List Checked Out Files"
                     }
                 ]
             }
