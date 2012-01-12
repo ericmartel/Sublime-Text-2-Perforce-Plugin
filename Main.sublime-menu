@@ -22,6 +22,10 @@
                     {
                         "command": "perforce_revert",
                         "caption": "P4 Revert"
+                    },
+                    {
+                        "command": "perforce_diff",
+                        "caption": "P4 Diff"
                     }
                 ]
             }

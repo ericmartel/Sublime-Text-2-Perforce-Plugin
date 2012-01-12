@@ -5,11 +5,13 @@
 #   perforce_add
 #   perforce_checkout
 #   perforce_revert
+#   perforce_diff
 
 # changelog
 # Eric Martel - first implementation of add / checkout
 # Tomek Wytrebowicz & Eric Martel - handling of forward slashes in clientspec folder
 # Rocco De Angelis & Eric Martel - first implementation of revert
+# Eric Martel - first implementation of diff
 
 import sublime
 import sublime_plugin
@@ -67,6 +69,16 @@ def IsFileInDepot(in_folder, in_filename):
         else:
             return 0
 
+def PerforceCommandOnFile(in_command, in_folder, in_filename):
+    command = 'p4', in_command,  in_filename
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
+    result, err = p.communicate()
+
+    if(not err):
+        return 1, result.strip()
+    else:
+        return 0, err.strip()   
+
 # Checkout section
 def Checkout(in_filename):
     folder_name, filename = os.path.split(in_filename)
@@ -79,14 +91,7 @@ def Checkout(in_filename):
         return -1, "File is already writable."
 
     # check out the file
-    command = 'p4 edit ' + filename
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder_name, shell=True)
-    result, err = p.communicate()
-
-    if(not err):
-        return 1, result.strip()
-    else:
-        return 0, err.strip()
+    return PerforceCommandOnFile("edit", folder_name, in_filename);
   
 class PerforceAutoCheckout(sublime_plugin.EventListener):  
     def on_pre_save(self, view):
@@ -116,15 +121,8 @@ class PerforceCheckoutCommand(sublime_plugin.TextCommand):
 
 # Add section
 def Add(in_folder, in_filename):
-    # check out the file
-    command = 'p4 add ' + in_filename
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
-    result, err = p.communicate()
-
-    if(not err):
-        return 1, result.strip()
-    else:
-        return 0, err.strip()
+    # add the file
+    return PerforceCommandOnFile("add", in_folder, in_filename);
 
 class PerforceAutoAdd(sublime_plugin.EventListener):
     preSaveIsFileInDepot = 0
@@ -166,14 +164,7 @@ class PerforceAddCommand(sublime_plugin.TextCommand):
 # Revert section
 def Revert(in_folder, in_filename):
     # revert the file
-    command = 'p4 revert ' + in_filename
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
-    result, err = p.communicate()
-
-    if(not err):
-        return 1, result.strip()
-    else:
-        return 0, err.strip()
+    return PerforceCommandOnFile("revert", in_folder, in_filename);
 
 class PerforceRevertCommand(sublime_plugin.TextCommand):
     def run_(self, args): # revert cannot be called when an Edit object exists, manually handle the run routine
@@ -184,6 +175,28 @@ class PerforceRevertCommand(sublime_plugin.TextCommand):
                 success, message = Revert(folder_name, filename)
                 if(success): # the file was properly reverted, ask Sublime Text to refresh the view
                     self.view.run_command('revert');
+            else:
+                success = 0
+                message = "File is not under the client root."
+
+            if(success >= 0):
+                print "Perforce:", message
+            else:
+                if(view.settings().get('perforce_warnings_enabled', False)):
+                    print "Perforce [warning]:", message        
+
+# Diff section
+def Diff(in_folder, in_filename):
+    # diff the file
+    return PerforceCommandOnFile("diff", in_folder, in_filename);
+
+class PerforceDiffCommand(sublime_plugin.TextCommand):
+    def run(self, edit): 
+        if(self.view.file_name()):
+            folder_name, filename = os.path.split(self.view.file_name())
+
+            if(IsFileInDepot(folder_name, filename)):
+                success, message = Diff(folder_name, filename)
             else:
                 success = 0
                 message = "File is not under the client root."
