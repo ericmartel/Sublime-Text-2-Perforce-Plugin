@@ -4,6 +4,6 @@ Work is still in progress, please review Perforce.py for all available commands 
 
 Please direct any feedback to emartel@gmail.com or through github at https://github.com/ericmartel/Sublime-Text-2-Perforce-Plugin.
 
-Thank your for your support.
+Thank you for your support.
 
 Eric Martel
