@@ -26,6 +26,10 @@
                     {
                         "command": "perforce_diff",
                         "caption": "P4 Diff"
+                    },
+                    {
+                        "command": "perforce_graphical_diff_with_depot",
+                        "caption": "P4 Graphical Diff with Depot"
                     }
                 ]
             }

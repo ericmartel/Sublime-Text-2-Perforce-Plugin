@@ -6,12 +6,14 @@
 #   perforce_checkout
 #   perforce_revert
 #   perforce_diff
+#   perforce_graphical_diff_with_depot - uses p4diff for now
 
 # changelog
 # Eric Martel - first implementation of add / checkout
 # Tomek Wytrebowicz & Eric Martel - handling of forward slashes in clientspec folder
 # Rocco De Angelis & Eric Martel - first implementation of revert
 # Eric Martel - first implementation of diff
+# Eric Martel - first implementation of Graphical Diff from Depot
 
 import sublime
 import sublime_plugin
@@ -19,11 +21,13 @@ import sublime_plugin
 import os
 import stat
 import subprocess
+import tempfile
 
 # Plugin Settings
 # perforce_warnings_enabled # will output messages when warnings happen
 # perforce_auto_checkout # when true, any file within the client spec will be checked out when saving if read only   
 # perforce_auto_add # when true, any file within the client spec that doesn't exist during the presave will be added
+# perforce_end_line_separator # defaults to '\n' - used to reconstruct the depot file after breaking it up to remove the first line
 
 # Utility functions
 def IsFolderUnderClientRoot(in_folder):
@@ -158,7 +162,7 @@ class PerforceAddCommand(sublime_plugin.TextCommand):
             if(success >= 0):
                 print "Perforce:", message
             else:
-                if(view.settings().get('perforce_warnings_enabled', False)):
+                if(self.view.settings().get('perforce_warnings_enabled', False)):
                     print "Perforce [warning]:", message
 
 # Revert section
@@ -182,7 +186,7 @@ class PerforceRevertCommand(sublime_plugin.TextCommand):
             if(success >= 0):
                 print "Perforce:", message
             else:
-                if(view.settings().get('perforce_warnings_enabled', False)):
+                if(self.view.settings().get('perforce_warnings_enabled', False)):
                     print "Perforce [warning]:", message        
 
 # Diff section
@@ -204,5 +208,51 @@ class PerforceDiffCommand(sublime_plugin.TextCommand):
             if(success >= 0):
                 print "Perforce:", message
             else:
-                if(view.settings().get('perforce_warnings_enabled', False)):
-                    print "Perforce [warning]:", message        
+                if(self.view.settings().get('perforce_warnings_enabled', False)):
+                    print "Perforce [warning]:", message
+                    
+# Graphical Diff With Depot section
+def GraphicalDiffWithDepot(self, in_folder, in_filename):
+    success, content = PerforceCommandOnFile("print", in_folder, in_filename)
+    if(not success):
+        return 0, content
+
+    # Create a temporary file to hold the depot version
+    tmp_file = open(os.path.join(tempfile.gettempdir(), "depot"+in_filename), 'w')
+
+    # Remove the first two lines of content
+    linebyline = content.splitlines();
+    content=self.view.settings().get('perforce_end_line_separator', '\n').join(linebyline[1:]);
+
+    try:
+        tmp_file.write(content)
+    finally:
+        tmp_file.close()
+
+    # Launch P4Diff with both files and the same arguments P4Win passes it
+    command = 'p4diff ' + tmp_file.name + ' ' + os.path.join(in_folder, in_filename) + " -l \"" + in_filename + " in depot\" -e -1 4"
+    
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
+    result, err = p.communicate()
+
+    # Clean up
+    os.unlink(tmp_file.name);
+
+    return -1, "Executing command " + command
+
+class PerforceGraphicalDiffWithDepotCommand(sublime_plugin.TextCommand):
+    def run(self, edit): 
+        if(self.view.file_name()):
+            folder_name, filename = os.path.split(self.view.file_name())
+
+            if(IsFileInDepot(folder_name, filename)):
+                success, message = GraphicalDiffWithDepot(self, folder_name, filename)
+            else:
+                success = 0
+                message = "File is not under the client root."
+
+            if(success >= 0):
+                print "Perforce:", message
+            else:
+                if(self.view.settings().get('perforce_warnings_enabled', False)):
+                    print "Perforce [warning]:", message
