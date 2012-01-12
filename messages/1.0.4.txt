@@ -1,0 +1,4 @@
+Perforce integration 1.0.4 Changelog:
+
+New Features
+ - Added Sublime Commands to each available commands. They can now be launched using the Command Palette

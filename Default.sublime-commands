@@ -1,0 +1,26 @@
+[
+    {
+        "caption": "Perforce: Checkout",
+        "command": "perforce_checkout"
+    },
+    {
+        "caption": "Perforce: Add",
+        "command": "perforce_add"
+    },
+    {
+        "caption": "Perforce: Revert",
+        "command": "perforce_revert"
+    },
+    {
+        "caption": "Perforce: Diff",
+        "command": "perforce_diff"
+    },
+    {
+        "caption": "Perforce: Graphical Diff with Depot",
+        "command": "perforce_graphical_diff_with_depot"
+    },
+    {
+        "caption": "Perforce: List Checkedout Files",
+        "command": "perforce_list_checked_out_files"
+    }
+]

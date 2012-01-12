@@ -1,5 +1,1 @@
-{
-	"version": "1.0.3",
-	"url": "https://github.com/ericmartel/Sublime-Text-2-Perforce-Plugin",
-	"description": "A Perforce integration plugin"
-}
+{"url": "https://github.com/ericmartel/Sublime-Text-2-Perforce-Plugin", "version": "2012.01.12.01.58.03", "description": "Supports auto add and checkout with commands to add, diff, checkout, revert, diff using p4diff and lists all checked out files with quick access to them"}

@@ -1,5 +1,4 @@
 # Written by Eric Martel (emartel@gmail.com / www.ericmartel.com)
-# Inspired by https://gist.github.com/1065808
 
 # available keyboard shortcuts
 #   perforce_add
@@ -305,11 +304,11 @@ class ListCheckedOutFilesThread(threading.Thread):
 
         return filename
 
-    def MakeFileListFromChangelist(self, in_changelist):
+    def MakeFileListFromChangelist(self, in_changelistline):
         files_list = []
 
         # Launch p4 opened to retrieve all files from changelist
-        command = 'p4 opened -c ' + in_changelist
+        command = 'p4 opened -c ' + in_changelistline[1]
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
         result, err = p.communicate()
         if(not err):
@@ -324,7 +323,7 @@ class ListCheckedOutFilesThread(threading.Thread):
                 cleanedfile = '/'.join(cleanedfile.split('/')[3:])
 
                 file_entry = [cleanedfile[cleanedfile.rfind('/')+1:]]
-                file_entry.append("Changelist: " + in_changelist);
+                file_entry.append("Changelist: " + in_changelistline[1] + " - " + ' '.join(in_changelistline[7:]));
                 localfile = self.ConvertFileNameToFileOnDisk(cleanedfile)
                 file_entry.append(localfile)
                 
@@ -332,7 +331,7 @@ class ListCheckedOutFilesThread(threading.Thread):
         return files_list
 
     def MakeCheckedOutFileList(self):
-        files_list = self.MakeFileListFromChangelist('default');
+        files_list = self.MakeFileListFromChangelist(['','default','','','','','','Default Changelist']);
 
         # Launch p4 changes to retrieve all the pending changelists
         command = 'p4 changes -s pending'   
@@ -345,7 +344,7 @@ class ListCheckedOutFilesThread(threading.Thread):
             # for each line, extract the change, and run p4 opened on it to list all the files
             for changelistline in changelists:
                 changelistlinesplit = changelistline.split(' ')
-                files_list.extend(self.MakeFileListFromChangelist(changelistlinesplit[1]))
+                files_list.extend(self.MakeFileListFromChangelist(changelistlinesplit))
 
         return files_list
 
@@ -354,8 +353,7 @@ class ListCheckedOutFilesThread(threading.Thread):
 
         def show_quick_panel():
             if not self.files_list:
-                sublime.error_message(__name__ + ': There are no checked out files ' +
-                    'to list.')
+                sublime.error_message(__name__ + ': There are no checked out files to list.')
                 return
             self.window.show_quick_panel(self.files_list, self.on_done)
         sublime.set_timeout(show_quick_panel, 10)
