@@ -8,7 +8,7 @@
             {
                 "caption": "Perforce",
                 "mnemonic": "f",
-                "id": "package-settings",
+                "id": "perforce",
                 "children":
                 [
                     {
