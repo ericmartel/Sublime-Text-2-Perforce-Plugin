@@ -1,6 +1,6 @@
 # Written by Eric Martel (emartel@gmail.com / www.ericmartel.com)
 
-# Available keyboard shortcuts are documented in Default.sublime-commands
+# Available commands are listed in Default.sublime-commands
 
 # changelog
 # Eric Martel - first implementation of add / checkout
