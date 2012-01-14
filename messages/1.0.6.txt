@@ -1,0 +1,5 @@
+Perforce integration 1.0.6 Changelog:
+
+New Features
+ - Added rename and delete
+ - Added an option to have checkouts done when modifying the file

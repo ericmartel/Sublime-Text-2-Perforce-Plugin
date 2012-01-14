@@ -12,6 +12,14 @@
         "command": "perforce_revert"
     },
     {
+        "caption": "Perforce: Rename",
+        "command": "perforce_rename"
+    },
+    {
+        "caption": "Perforce: Delete",
+        "command": "perforce_delete"
+    },
+    {
         "caption": "Perforce: Diff",
         "command": "perforce_diff"
     },

@@ -28,6 +28,10 @@
                         "caption": "Create Changelist" 
                     },
                     {
+                        "command": "perforce_delete",
+                        "caption": "Delete" 
+                    },
+                    {
                         "command": "perforce_diff",
                         "caption": "Diff"
                     },
@@ -42,6 +46,10 @@
                     {
                         "command": "perforce_move_current_file_to_changelist",
                         "caption": "Move Current File To Changelist"                        
+                    },
+                    {
+                        "command": "perforce_rename",
+                        "caption": "Rename"
                     },
                     {
                         "command": "perforce_revert",

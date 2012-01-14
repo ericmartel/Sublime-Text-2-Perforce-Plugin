@@ -1,11 +1,6 @@
 # Written by Eric Martel (emartel@gmail.com / www.ericmartel.com)
 
-# available keyboard shortcuts
-#   perforce_add
-#   perforce_checkout
-#   perforce_revert
-#   perforce_diff
-#   perforce_graphical_diff_with_depot - uses p4diff for now
+# Available keyboard shortcuts are documented in Default.sublime-commands
 
 # changelog
 # Eric Martel - first implementation of add / checkout
@@ -14,6 +9,7 @@
 # Eric Martel - first implementation of diff
 # Eric Martel - first implementation of Graphical Diff from Depot
 # Eric Martel - first pass on changelist manipulation
+# Eric Martel - first implementation for rename / delete & added on_modified as a condition to checkout a file
 
 import sublime
 import sublime_plugin
@@ -164,6 +160,15 @@ def LogResults(success, message):
     else:
         WarnUser(message);
 
+def IsFileWritable(in_filename):
+    if(not in_filename):
+        return 0
+
+    filestats = os.stat(in_filename)[0];
+    if(filestats & stat.S_IWRITE):
+        return 1
+    return 0
+
 # Checkout section
 def Checkout(in_filename):
     folder_name, filename = os.path.split(in_filename)
@@ -172,20 +177,35 @@ def Checkout(in_filename):
     if(isInDepot != 1):
         return -1, "File is not under the client root."
     
-    filestats = os.stat(in_filename)[0];
-    if(filestats & stat.S_IWRITE):
+    if(IsFileWritable(in_filename)):
         return -1, "File is already writable."
 
     # check out the file
     return PerforceCommandOnFile("edit", folder_name, in_filename);
   
 class PerforceAutoCheckout(sublime_plugin.EventListener):  
+    def on_modified(self, view):
+        if(not view.file_name()):
+            return
+
+        if(IsFileWritable(view.file_name())):
+            return
+
+        perforce_settings = sublime.load_settings('Perforce.sublime-settings')
+
+        # check if this part of the plugin is enabled
+        if(not perforce_settings.get('perforce_auto_checkout') or not perforce_settings.get('perforce_auto_checkout_on_modified')):
+            return
+              
+        if(view.is_dirty()):
+            success, message = Checkout(view.file_name())
+            LogResults(success, message);
+
     def on_pre_save(self, view):
         perforce_settings = sublime.load_settings('Perforce.sublime-settings')
 
         # check if this part of the plugin is enabled
-        if(not perforce_settings.get('perforce_auto_checkout')):
-            WarnUser("Auto Checkout disabled")
+        if(not perforce_settings.get('perforce_auto_checkout') or not perforce_settings.get('perforce_auto_checkout_on_save')):
             return
               
         if(view.is_dirty()):
@@ -233,6 +253,71 @@ class PerforceAddCommand(sublime_plugin.TextCommand):
 
             if(IsFileInDepot(folder_name, filename)):
                 success, message = Add(folder_name, filename)
+            else:
+                success = 0
+                message = "File is not under the client root."
+
+            LogResults(success, message)
+        else:
+            WarnUser("View does not contain a file")
+
+# Rename section
+def Rename(in_filename, in_newname):
+    command = 'p4 integrate -d -t -Di -f "' + in_filename + '" "' + in_newname + '"'
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    if(err):
+        return 0, err.strip()
+    
+    command = 'p4 delete "' + in_filename + '" "' + in_newname + '"'
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    if(not err):
+        return 1, result.strip()
+    else:
+        return 0, err.strip()
+
+class PerforceRenameCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        # Get the description
+        self.window.show_input_panel('New File Name', self.window.active_view().file_name(),
+            self.on_done, self.on_change, self.on_cancel)
+
+    def on_done(self, input):
+        success, message = Rename(self.window.active_view().file_name(), input)
+        if(success):
+            self.window.run_command('close')
+            self.window.open_file(input)
+
+        LogResults(success, message)
+
+    def on_change(self, input):
+        pass
+
+    def on_cancel(self):
+        pass
+
+# Delete section
+def Delete(in_folder, in_filename):
+    success, message = PerforceCommandOnFile("delete", in_folder, in_filename)
+    if(success):
+        # test if the file is deleted
+        if(os.path.isfile(os.path.join(in_folder, in_filename))):
+            success = 0
+
+    return success, message
+
+class PerforceDeleteCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        if(self.window.active_view().file_name()):
+            folder_name, filename = os.path.split(self.window.active_view().file_name())
+
+            if(IsFileInDepot(folder_name, filename)):
+                success, message = Delete(folder_name, filename)
+                if(success): # the file was properly deleted on perforce, ask Sublime Text to close the view
+                    self.window.run_command('close');
             else:
                 success = 0
                 message = "File is not under the client root."
@@ -305,7 +390,6 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
 
     # Launch P4Diff with both files and the same arguments P4Win passes it
     command = 'p4diff "' + tmp_file.name + '" "' + os.path.join(in_folder, in_filename) + "\" -l \"" + in_filename + " in depot\" -e -1 4"
-    print command
     
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
     result, err = p.communicate()

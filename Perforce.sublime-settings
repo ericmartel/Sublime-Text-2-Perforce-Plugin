@@ -1,5 +1,7 @@
 {
-	"perforce_auto_checkout": true, // when true, any file within the client spec will be checked out when saving if read only   
+	"perforce_auto_checkout": true, // when true, checkout will occur depending on the modify/save settings
+	"perforce_auto_checkout_on_save": true,
+	"perforce_auto_checkout_on_modified": false,
 	"perforce_auto_add": true, // when true, any file within the client spec that doesn't exist during the presave will be added
 	"perforce_warnings_enabled": true, // will output messages when warnings happen
 	"perforce_end_line_separator": "\n", // used to reconstruct the depot file after breaking it up to remove the first line
