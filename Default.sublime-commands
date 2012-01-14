@@ -22,5 +22,17 @@
     {
         "caption": "Perforce: List Checkedout Files",
         "command": "perforce_list_checked_out_files"
+    },
+    {
+        "caption": "Perforce: Create Changelist",
+        "command": "perforce_create_changelist"
+    },
+    {
+        "caption": "Perforce: Move Current File To Changelist",
+        "command": "perforce_move_current_file_to_changelist"
+    },
+    {
+        "caption": "Perforce: Add Line To Changelist Description",
+        "command": "perforce_add_line_to_changelist_description"
     }
 ]

@@ -1,0 +1,8 @@
+Perforce integration 1.0.5 Changelog:
+
+New Features
+ - Added support for creating and modifying changelists
+ - Added an option to have the status bar display warnings
+ - Fixed an issue listing files with spaces in them
+ - Refactored code
+ - Better clean up of temporary files

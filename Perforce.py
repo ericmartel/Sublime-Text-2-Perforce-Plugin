@@ -13,6 +13,7 @@
 # Rocco De Angelis & Eric Martel - first implementation of revert
 # Eric Martel - first implementation of diff
 # Eric Martel - first implementation of Graphical Diff from Depot
+# Eric Martel - first pass on changelist manipulation
 
 import sublime
 import sublime_plugin
@@ -78,8 +79,69 @@ def IsFileInDepot(in_folder, in_filename):
         else:
             return 0
 
+def GetPendingChangelists():
+    # Launch p4 changes to retrieve all the pending changelists
+    command = 'p4 changes -s pending'   
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    if(not err):
+        return 1, result
+    return 0, result
+
+def AppendToChangelistDescription(changelist, input):
+    # First, create an empty changelist, we will then get the cl number and set the description
+    command = 'p4 change -o ' + changelist
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    if(err):
+        return 0, err
+
+    # Find the description field and modify it
+    lines = result.splitlines()
+
+    descriptionindex = -1
+    for index, line in enumerate(lines):
+        if(line.strip() == "Description:"):
+            descriptionindex = index
+            break;
+    
+    filesindex = -1
+    for index, line in enumerate(lines):
+        if(line.strip() == "Files:"):
+            filesindex = index
+            break;
+
+    if(filesindex == -1): # The changelist is empty
+        endindex = index
+    else:
+        endindex = filesindex - 1
+
+    perforce_settings = sublime.load_settings('Perforce.sublime-settings')
+    lines.insert(endindex , "\t" + input)
+
+    temp_changelist_description_file = open(os.path.join(tempfile.gettempdir(), "tempchangelist.txt"), 'w')
+
+    try:
+        temp_changelist_description_file.write(perforce_settings.get('perforce_end_line_separator').join(lines))
+    finally:
+        temp_changelist_description_file.close()
+
+    command = 'p4 change -i < ' + temp_changelist_description_file.name
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    # Clean up
+    os.unlink(temp_changelist_description_file.name)
+
+    if(err):
+        return 0, err
+
+    return 1, result
+
 def PerforceCommandOnFile(in_command, in_folder, in_filename):
-    command = 'p4', in_command,  in_filename
+    command = 'p4 ' + in_command + ' "' + in_filename + '"'
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
     result, err = p.communicate()
 
@@ -87,6 +149,20 @@ def PerforceCommandOnFile(in_command, in_folder, in_filename):
         return 1, result.strip()
     else:
         return 0, err.strip()   
+
+def WarnUser(message):
+    perforce_settings = sublime.load_settings('Perforce.sublime-settings')
+    if(perforce_settings.get('perforce_warnings_enabled')):
+        if(perforce_settings.get('perforce_log_warnings_to_status')):
+            sublime.status_message("Perforce [warning]: " + message)
+        else:
+            print "Perforce [warning]: " + message
+
+def LogResults(success, message):
+    if(success >= 0):
+        print "Perforce: " + message
+    else:
+        WarnUser(message);
 
 # Checkout section
 def Checkout(in_filename):
@@ -109,32 +185,20 @@ class PerforceAutoCheckout(sublime_plugin.EventListener):
 
         # check if this part of the plugin is enabled
         if(not perforce_settings.get('perforce_auto_checkout')):
-            if(perforce_settings.get('perforce_warnings_enabled')):
-                print "Perforce [warning]: Auto Checkout disabled"
+            WarnUser("Auto Checkout disabled")
             return
               
         if(view.is_dirty()):
             success, message = Checkout(view.file_name())
-            if(success >= 0):
-                print "Perforce:", message
-            else:
-                if(perforce_settings.get('perforce_warnings_enabled')):
-                    print "Perforce [warning]:", message
+            LogResults(success, message);
 
 class PerforceCheckoutCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        perforce_settings = sublime.load_settings('Perforce.sublime-settings')
-
         if(self.view.file_name()):
             success, message = Checkout(self.view.file_name())
-            if(success >= 0):
-                print "Perforce:", message
-            else:
-                if(perforce_settings.get('perforce_warnings_enabled')):
-                    print "Perforce [warning]:", message
+            LogResults(success, message)
         else:
-            if perforce_settings.get('perforce_warnings_enabled'):
-                print "Perforce [warning]: View does not contain a file"
+            WarnUser("View does not contain a file")
 
 # Add section
 def Add(in_folder, in_filename):
@@ -150,8 +214,7 @@ class PerforceAutoAdd(sublime_plugin.EventListener):
 
         # check if this part of the plugin is enabled
         if(not perforce_settings.get('perforce_auto_add')):
-            if(perforce_settings.get('perforce_warnings_enabled')):
-                print "Perforce [warning]: Auto Add disabled"
+            WarnUser("Auto Add disabled")
             return
 
         folder_name, filename = os.path.split(view.file_name())
@@ -161,12 +224,11 @@ class PerforceAutoAdd(sublime_plugin.EventListener):
         if(self.preSaveIsFileInDepot == -1):
             folder_name, filename = os.path.split(view.file_name())
             success, message = Add(folder_name, filename)
-        
+            LogResults(success, message)
 
 class PerforceAddCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if(self.view.file_name()):
-            perforce_settings = sublime.load_settings('Perforce.sublime-settings')
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -175,14 +237,9 @@ class PerforceAddCommand(sublime_plugin.TextCommand):
                 success = 0
                 message = "File is not under the client root."
 
-            if(success >= 0):
-                print "Perforce:", message
-            else:
-                if(perforce_settings.get('perforce_warnings_enabled')):
-                    print "Perforce [warning]:", message
+            LogResults(success, message)
         else:
-            if perforce_settings.get('perforce_warnings_enabled'):
-                print "Perforce [warning]: View does not contain a file"
+            WarnUser("View does not contain a file")
 
 # Revert section
 def Revert(in_folder, in_filename):
@@ -192,7 +249,6 @@ def Revert(in_folder, in_filename):
 class PerforceRevertCommand(sublime_plugin.TextCommand):
     def run_(self, args): # revert cannot be called when an Edit object exists, manually handle the run routine
         if(self.view.file_name()):
-            perforce_settings = sublime.load_settings('Perforce.sublime-settings')
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -203,14 +259,9 @@ class PerforceRevertCommand(sublime_plugin.TextCommand):
                 success = 0
                 message = "File is not under the client root."
 
-            if(success >= 0):
-                print "Perforce:", message
-            else:
-                if(perforce_settings.get('perforce_warnings_enabled')):
-                    print "Perforce [warning]:", message  
+            LogResults(success, message)
         else:
-            if perforce_settings.get('perforce_warnings_enabled'):
-                print "Perforce [warning]: View does not contain a file"      
+            WarnUser("View does not contain a file")
 
 # Diff section
 def Diff(in_folder, in_filename):
@@ -220,8 +271,6 @@ def Diff(in_folder, in_filename):
 class PerforceDiffCommand(sublime_plugin.TextCommand):
     def run(self, edit): 
         if(self.view.file_name()):
-            perforce_settings = sublime.load_settings('Perforce.sublime-settings')
-
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -230,14 +279,9 @@ class PerforceDiffCommand(sublime_plugin.TextCommand):
                 success = 0
                 message = "File is not under the client root."
 
-            if(success >= 0):
-                print "Perforce:", message
-            else:
-                if(perforce_settings.get('perforce_warnings_enabled')):
-                    print "Perforce [warning]:", message
+            LogResults(success, message)
         else:
-            if perforce_settings.get('perforce_warnings_enabled'):
-                print "Perforce [warning]: View does not contain a file"
+            WarnUser("View does not contain a file")
                     
 # Graphical Diff With Depot section
 def GraphicalDiffWithDepot(self, in_folder, in_filename):
@@ -260,7 +304,8 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
         tmp_file.close()
 
     # Launch P4Diff with both files and the same arguments P4Win passes it
-    command = 'p4diff ' + tmp_file.name + ' ' + os.path.join(in_folder, in_filename) + " -l \"" + in_filename + " in depot\" -e -1 4"
+    command = 'p4diff "' + tmp_file.name + '" "' + os.path.join(in_folder, in_filename) + "\" -l \"" + in_filename + " in depot\" -e -1 4"
+    print command
     
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
     result, err = p.communicate()
@@ -273,8 +318,6 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
 class PerforceGraphicalDiffWithDepotCommand(sublime_plugin.TextCommand):
     def run(self, edit): 
         if(self.view.file_name()):
-            perforce_settings = sublime.load_settings('Perforce.sublime-settings')
-
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -283,14 +326,9 @@ class PerforceGraphicalDiffWithDepotCommand(sublime_plugin.TextCommand):
                 success = 0
                 message = "File is not under the client root."
 
-            if(success >= 0):
-                print "Perforce:", message
-            else:
-                if(perforce_settings.get('perforce_warnings_enabled')):
-                    print "Perforce [warning]:", message
+            LogResults(success, message)
         else:
-            if perforce_settings.get('perforce_warnings_enabled'):
-                print "Perforce [warning]: View does not contain a file"
+            WarnUser("View does not contain a file")
 
 
 # List Checked Out Files section
@@ -314,16 +352,16 @@ class ListCheckedOutFilesThread(threading.Thread):
         if(not err):
             lines = result.splitlines()
             for line in lines:
-                file = line.split(' ')[0]
                 # remove the change #
-                poundindex = file.rfind('#')
-                cleanedfile = file[0:poundindex]
+                poundindex = line.rfind('#')
+                cleanedfile = line[0:poundindex]
 
                 # just keep the filename
                 cleanedfile = '/'.join(cleanedfile.split('/')[3:])
 
                 file_entry = [cleanedfile[cleanedfile.rfind('/')+1:]]
-                file_entry.append("Changelist: " + in_changelistline[1] + " - " + ' '.join(in_changelistline[7:]));
+                file_entry.append("Changelist: " + in_changelistline[1])
+                file_entry.append(' '.join(in_changelistline[7:]));
                 localfile = self.ConvertFileNameToFileOnDisk(cleanedfile)
                 file_entry.append(localfile)
                 
@@ -361,7 +399,7 @@ class ListCheckedOutFilesThread(threading.Thread):
     def on_done(self, picked):
         if picked == -1:
             return
-        file_name = self.files_list[picked][2]
+        file_name = self.files_list[picked][3]
 
         def open_file():
             self.window.open_file(file_name)
@@ -371,3 +409,217 @@ class ListCheckedOutFilesThread(threading.Thread):
 class PerforceListCheckedOutFilesCommand(sublime_plugin.WindowCommand):
     def run(self):
         ListCheckedOutFilesThread(self.window).start()
+
+# Create Changelist section
+def CreateChangelist(description):
+    # First, create an empty changelist, we will then get the cl number and set the description
+    command = 'p4 change -o'   
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    if(err):
+        return 0, err
+
+    # Find the description field and modify it
+    result = result.replace("<enter description here>", description)
+
+    # Remove all files from the query, we want them to stay in Default
+    filesindex = result.rfind("Files:")
+    # The Files: section we want to get rid of is only present if there's files in the default changelist
+    if(filesindex > 640):
+        result = result[0:filesindex];
+
+    temp_changelist_description_file = open(os.path.join(tempfile.gettempdir(), "tempchangelist.txt"), 'w')
+
+    try:
+        temp_changelist_description_file.write(result)
+    finally:
+        temp_changelist_description_file.close()
+
+    command = 'p4 change -i < ' + temp_changelist_description_file.name
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    # Clean up
+    os.unlink(temp_changelist_description_file.name)
+
+    if(err):
+        return 0, err
+
+    return 1, result
+
+class PerforceCreateChangelistCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        # Get the description
+        self.window.show_input_panel('Changelist Description', '',
+            self.on_done, self.on_change, self.on_cancel)
+
+    def on_done(self, input):
+        success, message = CreateChangelist(input)
+        LogResults(success, message)
+
+    def on_change(self, input):
+        pass
+
+    def on_cancel(self):
+        pass
+
+# Move Current File to Changelist
+def MoveFileToChangelist(in_filename, in_changelist):
+    folder_name, filename = os.path.split(in_filename)
+
+    command = 'p4 reopen -c ' + in_changelist + ' "' + filename + '"'
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder_name, shell=True)
+    result, err = p.communicate()
+
+    if(err):
+        return 0, err
+    
+    return 1, result
+
+class ListChangelistsAndMoveFileThread(threading.Thread):
+    def __init__(self, window):
+        self.window = window
+        self.view = window.active_view()
+        threading.Thread.__init__(self)
+
+    def MakeChangelistsList(self):
+        success, rawchangelists = GetPendingChangelists();
+
+        resultchangelists = ['New', 'Default'];
+
+        if(success):
+            changelists = rawchangelists.splitlines()
+
+            # for each line, extract the change
+            for changelistline in changelists:
+                changelistlinesplit = changelistline.split(' ')
+                
+                # Insert at two because we receive the changelist in the opposite order and want to keep new and default on top
+                resultchangelists.insert(2, "Changelist " + changelistlinesplit[1] + " - " + ' '.join(changelistlinesplit[7:])) 
+
+        return resultchangelists
+
+    def run(self):
+        self.changelists_list = self.MakeChangelistsList()
+        
+        def show_quick_panel():
+            if not self.changelists_list:
+                sublime.error_message(__name__ + ': There are no changelists to list.')
+                return
+            self.window.show_quick_panel(self.changelists_list, self.on_done)
+
+        sublime.set_timeout(show_quick_panel, 10)
+
+    def on_done(self, picked):
+        if picked == -1:
+            return
+        changelistlist = self.changelists_list[picked].split(' ')
+
+        def move_file():
+            changelist = 'Default'
+            if(len(changelistlist) > 1): # Numbered changelist
+                changelist = changelistlist[1]
+            else:
+                changelist = changelistlist[0]
+
+            if(changelist == 'New'): # Special Case
+                self.window.show_input_panel('Changelist Description', '', self.on_description_done, self.on_description_change, self.on_description_cancel)
+            else:
+                success, message = MoveFileToChangelist(self.view.file_name(), changelist.lower())
+                LogResults(success, message);
+
+        sublime.set_timeout(move_file, 10)
+
+    def on_description_done(self, input):
+        success, message = CreateChangelist(input)
+        if(success == 1):
+            # Extract the changelist name from the message
+            changelist = message.split(' ')[1]
+            # Move the file
+            success, message = MoveFileToChangelist(self.view.file_name(), changelist)
+
+        LogResults(success, message)
+    
+    def on_description_change(self, input):
+        pass
+
+    def on_description_cancel(self):
+        pass
+
+class PerforceMoveCurrentFileToChangelistCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        # first, test if the file is under the client root
+        folder_name, filename = os.path.split(self.window.active_view().file_name())
+        isInDepot = IsFileInDepot(folder_name, filename)
+
+        if(isInDepot != 1):
+            WarnUser("File is not under the client root.")
+            return 0
+
+        ListChangelistsAndMoveFileThread(self.window).start()
+
+# Add Line to Changelist Description
+class AddLineToChangelistDescriptionThread(threading.Thread):
+    def __init__(self, window):
+        self.window = window
+        self.view = window.active_view()
+        threading.Thread.__init__(self)
+
+    def MakeChangelistsList(self):
+        success, rawchangelists = GetPendingChangelists();
+
+        resultchangelists = [];
+
+        if(success):
+            changelists = rawchangelists.splitlines()
+
+            # for each line, extract the change, and run p4 opened on it to list all the files
+            for changelistline in changelists:
+                changelistlinesplit = changelistline.split(' ')
+                
+                # Insert at zero because we receive the changelist in the opposite order
+                # Might be more efficient to sort...
+                changelist_entry = ["Changelist " + changelistlinesplit[1]]
+                changelist_entry.append(' '.join(changelistlinesplit[7:]));
+                
+                resultchangelists.insert(0, changelist_entry) 
+
+        return resultchangelists
+
+    def run(self):
+        self.changelists_list = self.MakeChangelistsList()
+        
+        def show_quick_panel():
+            if not self.changelists_list:
+                sublime.error_message(__name__ + ': There are no changelists to list.')
+                return
+            self.window.show_quick_panel(self.changelists_list, self.on_done)
+
+        sublime.set_timeout(show_quick_panel, 10)
+
+    def on_done(self, picked):
+        if picked == -1:
+            return
+        changelistlist = self.changelists_list[picked][0].split(' ')
+
+        def get_description_line():
+            self.changelist = changelistlist[1]
+            self.window.show_input_panel('Changelist Description', '', self.on_description_done, self.on_description_change, self.on_description_cancel)
+
+        sublime.set_timeout(get_description_line, 10)
+
+    def on_description_done(self, input):
+        success, message = AppendToChangelistDescription(self.changelist, input)
+        
+        LogResults(success, message)
+    
+    def on_description_change(self, input):
+        pass
+
+    def on_description_cancel(self):
+        pass
+
+class PerforceAddLineToChangelistDescriptionCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        AddLineToChangelistDescriptionThread(self.window).start()

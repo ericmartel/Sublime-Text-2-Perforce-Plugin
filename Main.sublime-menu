@@ -12,28 +12,40 @@
                 "children":
                 [
                     {
-                        "command": "perforce_checkout",
-                        "caption": "P4 Checkout"
-                    },
-                    {
                         "command": "perforce_add",
-                        "caption": "P4 Add"
+                        "caption": "Add"
                     },
                     {
-                        "command": "perforce_revert",
-                        "caption": "P4 Revert"
+                        "command": "perforce_add_line_to_changelist_description",
+                        "caption": "Add Line To Changelist Description"
+                    },
+                    {
+                        "command": "perforce_checkout",
+                        "caption": "Checkout"
+                    },
+                    {
+                        "command": "perforce_create_changelist",
+                        "caption": "Create Changelist" 
                     },
                     {
                         "command": "perforce_diff",
-                        "caption": "P4 Diff"
+                        "caption": "Diff"
                     },
                     {
                         "command": "perforce_graphical_diff_with_depot",
-                        "caption": "P4 Graphical Diff with Depot"
+                        "caption": "Graphical Diff with Depot"
                     },
                     {
                         "command": "perforce_list_checked_out_files",
                         "caption": "List Checked Out Files"
+                    },
+                    {
+                        "command": "perforce_move_current_file_to_changelist",
+                        "caption": "Move Current File To Changelist"                        
+                    },
+                    {
+                        "command": "perforce_revert",
+                        "caption": "Revert"
                     }
                 ]
             }
