@@ -10,6 +10,7 @@
 # Eric Martel - first implementation of Graphical Diff from Depot
 # Eric Martel - first pass on changelist manipulation
 # Eric Martel - first implementation for rename / delete & added on_modified as a condition to checkout a file
+# Jan van Valburg -  bug fix for better support of client workspaces
 
 import sublime
 import sublime_plugin
@@ -23,10 +24,10 @@ import threading
 # Plugin Settings are located in 'perforce.sublime-settings' make a copy in the User folder to keep changes
 
 # Utility functions
-def GetClientRoot():
+def GetClientRoot(in_dir):
     # check if the file is in the depot
     command = 'p4 info'
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.path.dirname(in_dir), shell=True)
     result, err = p.communicate()
 
     if(err):
@@ -50,7 +51,7 @@ def GetClientRoot():
 
 def IsFolderUnderClientRoot(in_folder):
     # check if the file is in the depot
-    clientroot = GetClientRoot()
+    clientroot = GetClientRoot(in_folder)
 
     # convert all paths to "os.sep" slashes 
     convertedfolder = in_folder.lower().replace('\\', os.sep).replace('/', os.sep);
@@ -422,7 +423,7 @@ class ListCheckedOutFilesThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def ConvertFileNameToFileOnDisk(self, in_filename):
-        filename = GetClientRoot() + os.sep + in_filename.replace('\\', os.sep).replace('/', os.sep)
+        filename = GetClientRoot(os.path.dirname(in_filename)) + os.sep + in_filename.replace('\\', os.sep).replace('/', os.sep)
 
         return filename
 

@@ -1,0 +1,4 @@
+Perforce integration 1.0.7 Changelog:
+
+Bug Fix
+- Better support for client workspaces
