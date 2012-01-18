@@ -5,5 +5,9 @@
 	"perforce_auto_add": true, // when true, any file within the client spec that doesn't exist during the presave will be added
 	"perforce_warnings_enabled": true, // will output messages when warnings happen
 	"perforce_end_line_separator": "\n", // used to reconstruct the depot file after breaking it up to remove the first line
-	"perforce_log_warnings_to_status": true // used to redirect logs to the status bar instead. The standard output is too big for the line (can be multi-line with the raw output of p4)
+	"perforce_log_warnings_to_status": true, // used to redirect logs to the status bar instead. The standard output is too big for the line (can be multi-line with the raw output of p4)
+	
+	// use %depofile_path / %file_path as place holder for the full qulified path and %depofile_name / %file_name for the file name only 
+	"perforce_graphical_diff_command": "p4diff '%depofile_path' '%file_path' -l '%file_name in depot' -e -1 4"  
+	//"perforce_graphical_diff_command": "p4merge '%depofile_path' '%file_path'"
 }

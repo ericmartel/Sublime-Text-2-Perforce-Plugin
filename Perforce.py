@@ -49,6 +49,7 @@ def GetClientRoot(in_dir):
 
     return convertedclientroot
 
+
 def IsFolderUnderClientRoot(in_folder):
     # check if the file is in the depot
     clientroot = GetClientRoot(in_folder)
@@ -378,7 +379,8 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
         return 0, content
 
     # Create a temporary file to hold the depot version
-    tmp_file = open(os.path.join(tempfile.gettempdir(), "depot"+in_filename), 'w')
+    depotFileName = "depot"+in_filename
+    tmp_file = open(os.path.join(tempfile.gettempdir(), depotFileName), 'w')
 
     # Remove the first two lines of content
     linebyline = content.splitlines();
@@ -390,7 +392,14 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
         tmp_file.close()
 
     # Launch P4Diff with both files and the same arguments P4Win passes it
-    command = 'p4diff "' + tmp_file.name + '" "' + os.path.join(in_folder, in_filename) + "\" -l \"" + in_filename + " in depot\" -e -1 4"
+    diffCommand = perforce_settings.get('perforce_graphical_diff_command')
+    diffCommand = diffCommand.replace('%depofile_path', tmp_file.name)
+    diffCommand = diffCommand.replace('%depofile_name', depotFileName)
+    diffCommand = diffCommand.replace('%file_path', os.path.join(in_folder, in_filename))
+    diffCommand = diffCommand.replace('%file_name', in_filename)
+    
+    command = diffCommand
+    # command = 'p4diff "' + tmp_file.name + '" "' + os.path.join(in_folder, in_filename) + "\" -l \"" + in_filename + " in depot\" -e -1 4"
     
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
     result, err = p.communicate()
