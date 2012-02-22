@@ -1,0 +1,8 @@
+Perforce integration 1.0.8 Changelog:
+
+Bug Fix
+- Fixed issues with multiple return arguments
+- Fixed problems with invalid command path
+
+Add
+- The graphical diff application is now configurable

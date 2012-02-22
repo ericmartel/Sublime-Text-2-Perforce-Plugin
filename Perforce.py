@@ -11,6 +11,8 @@
 # Eric Martel - first pass on changelist manipulation
 # Eric Martel - first implementation for rename / delete & added on_modified as a condition to checkout a file
 # Jan van Valburg -  bug fix for better support of client workspaces
+# Eric Martel - better handling of clientspecs
+# Rocco De Angelis - parameterized graphical diff
 
 import sublime
 import sublime_plugin
@@ -27,31 +29,41 @@ import threading
 def GetClientRoot(in_dir):
     # check if the file is in the depot
     command = 'p4 info'
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.path.dirname(in_dir), shell=True)
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
     result, err = p.communicate()
 
     if(err):
-        return -1, err.strip()
+        WarnUser(err.strip())
+        return -1 
     
     # locate the line containing "Client root: " and extract the following path
     startindex = result.find("Client root: ")
     if(startindex == -1):
-        return -1, "Unexpected output from 'p4 info'."
-
+        # sometimes the clientspec is not displayed 
+        sublime.error_message("Perforce Plugin: p4 info didn't supply a valid clientspec, launching p4 client");
+        command = 'p4 client'
+        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+        result, err = p.communicate()
+        return -1
+            
     startindex += 13 # advance after 'Client root: '
 
     endindex = result.find("\n", startindex) 
     if(endindex == -1):
-        return -1, "Unexpected output from 'p4 info'."
+        WarnUser("Unexpected output from 'p4 info'.")
+        return -1
 
     # convert all paths to "os.sep" slashes 
     convertedclientroot = result[startindex:endindex].strip().lower().replace('\\', os.sep).replace('/', os.sep)
 
     return convertedclientroot
 
+
 def IsFolderUnderClientRoot(in_folder):
     # check if the file is in the depot
     clientroot = GetClientRoot(in_folder)
+    if(clientroot == -1):
+        return 0
 
     # convert all paths to "os.sep" slashes 
     convertedfolder = in_folder.lower().replace('\\', os.sep).replace('/', os.sep);
@@ -61,7 +73,6 @@ def IsFolderUnderClientRoot(in_folder):
         return 0
     
     return 1
-
 
 def IsFileInDepot(in_folder, in_filename):
     isUnderClientRoot = IsFolderUnderClientRoot(in_folder);
@@ -378,7 +389,8 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
         return 0, content
 
     # Create a temporary file to hold the depot version
-    tmp_file = open(os.path.join(tempfile.gettempdir(), "depot"+in_filename), 'w')
+    depotFileName = "depot"+in_filename
+    tmp_file = open(os.path.join(tempfile.gettempdir(), depotFileName), 'w')
 
     # Remove the first two lines of content
     linebyline = content.splitlines();
@@ -390,7 +402,13 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
         tmp_file.close()
 
     # Launch P4Diff with both files and the same arguments P4Win passes it
-    command = 'p4diff "' + tmp_file.name + '" "' + os.path.join(in_folder, in_filename) + "\" -l \"" + in_filename + " in depot\" -e -1 4"
+    diffCommand = perforce_settings.get('perforce_graphical_diff_command')
+    diffCommand = diffCommand.replace('%depofile_path', tmp_file.name)
+    diffCommand = diffCommand.replace('%depofile_name', depotFileName)
+    diffCommand = diffCommand.replace('%file_path', os.path.join(in_folder, in_filename))
+    diffCommand = diffCommand.replace('%file_name', in_filename)
+
+    command = diffCommand
     
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=in_folder, shell=True)
     result, err = p.communicate()
@@ -423,7 +441,11 @@ class ListCheckedOutFilesThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def ConvertFileNameToFileOnDisk(self, in_filename):
-        filename = GetClientRoot(os.path.dirname(in_filename)) + os.sep + in_filename.replace('\\', os.sep).replace('/', os.sep)
+        clientroot = GetClientRoot(os.path.dirname(in_filename))
+        if(clientroot == -1):
+            return 0
+
+        filename = clientroot + os.sep + in_filename.replace('\\', os.sep).replace('/', os.sep)
 
         return filename
 
@@ -448,9 +470,9 @@ class ListCheckedOutFilesThread(threading.Thread):
                 file_entry.append("Changelist: " + in_changelistline[1])
                 file_entry.append(' '.join(in_changelistline[7:]));
                 localfile = self.ConvertFileNameToFileOnDisk(cleanedfile)
-                file_entry.append(localfile)
-                
-                files_list.append(file_entry)
+                if(localfile != 0):
+                    file_entry.append(localfile)
+                    files_list.append(file_entry)
         return files_list
 
     def MakeCheckedOutFileList(self):
