@@ -1,0 +1,4 @@
+Perforce integration 1.0.9 Changelog:
+
+Bug Fix
+- Only list changelists belonging to the current user

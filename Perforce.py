@@ -13,6 +13,7 @@
 # Jan van Valburg -  bug fix for better support of client workspaces
 # Eric Martel - better handling of clientspecs
 # Rocco De Angelis - parameterized graphical diff
+# Eric Martel & adecold - only list pending changelists belonging to the current user
 
 import sublime
 import sublime_plugin
@@ -26,6 +27,30 @@ import threading
 # Plugin Settings are located in 'perforce.sublime-settings' make a copy in the User folder to keep changes
 
 # Utility functions
+def GetUserFromClientspec():
+    command = 'p4 info'
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+    result, err = p.communicate()
+
+    if(err):
+        WarnUser(err.strip())
+        return -1 
+
+    # locate the line containing "User name: " and extract the following name
+    startindex = result.find("User name: ")
+    if(startindex == -1):
+        WarnUser("Unexpected output from 'p4 info'.")
+        return -1
+    
+    startindex += 11 # advance after 'User name: '
+
+    endindex = result.find("\n", startindex) 
+    if(endindex == -1):
+        WarnUser("Unexpected output from 'p4 info'.")
+        return -1
+
+    return result[startindex:endindex].strip();
+
 def GetClientRoot(in_dir):
     # check if the file is in the depot
     command = 'p4 info'
@@ -89,7 +114,12 @@ def IsFileInDepot(in_folder, in_filename):
 
 def GetPendingChangelists():
     # Launch p4 changes to retrieve all the pending changelists
-    command = 'p4 changes -s pending'   
+    currentuser = GetUserFromClientspec()
+    if(currentuser == -1):
+        return 0, "Unexpected output from 'p4 info'."
+
+    command = 'p4 changes -s pending -u ' + currentuser;  
+
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
     result, err = p.communicate()
 
@@ -478,8 +508,12 @@ class ListCheckedOutFilesThread(threading.Thread):
     def MakeCheckedOutFileList(self):
         files_list = self.MakeFileListFromChangelist(['','default','','','','','','Default Changelist']);
 
+        currentuser = GetUserFromClientspec()
+        if(currentuser == -1):
+            return files_list
+
         # Launch p4 changes to retrieve all the pending changelists
-        command = 'p4 changes -s pending'   
+        command = 'p4 changes -s pending -u ' + currentuser;   
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
         result, err = p.communicate()
 
