@@ -1,0 +1,7 @@
+Perforce integration 1.0.10 Changelog:
+
+Bug Fix
+- Fixed Mac OSX version
+
+Add
+- Added context menus
