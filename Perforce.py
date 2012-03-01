@@ -87,7 +87,7 @@ def GetClientRoot(in_dir):
         return -1
 
     # convert all paths to "os.sep" slashes 
-    convertedclientroot = result[startindex:endindex].strip().lower().replace('\\', os.sep).replace('/', os.sep)
+    convertedclientroot = result[startindex:endindex].strip().replace('\\', os.sep).replace('/', os.sep)
 
     return convertedclientroot
 
@@ -97,6 +97,8 @@ def IsFolderUnderClientRoot(in_folder):
     clientroot = GetClientRoot(in_folder)
     if(clientroot == -1):
         return 0
+
+    clientroot = clientroot.lower()
 
     # convert all paths to "os.sep" slashes 
     convertedfolder = in_folder.lower().replace('\\', os.sep).replace('/', os.sep);
@@ -213,6 +215,10 @@ def LogResults(success, message):
 def IsFileWritable(in_filename):
     if(not in_filename):
         return 0
+
+    # if it doesn't exist, it's "writable"
+    if(not os.path.isfile(in_filename)):
+        return 1
 
     filestats = os.stat(in_filename)[0];
     if(filestats & stat.S_IWRITE):
