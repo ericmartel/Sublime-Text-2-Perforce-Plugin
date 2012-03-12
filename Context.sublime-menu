@@ -52,6 +52,10 @@
             {
                 "command": "perforce_revert",
                 "caption": "Revert"
+            },
+            {
+                "command": "perforce_submit",
+                "caption": "Submit"
             }
         ]
     },

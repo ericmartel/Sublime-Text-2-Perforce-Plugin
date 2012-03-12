@@ -15,6 +15,7 @@
 # Rocco De Angelis - parameterized graphical diff
 # Eric Martel & adecold - only list pending changelists belonging to the current user
 # Eric Martel - source bash_profile when calling p4 on Mac OSX
+# Eric Martel - first implementation of submit
 
 import sublime
 import sublime_plugin
@@ -132,7 +133,6 @@ def GetPendingChangelists():
 
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
     result, err = p.communicate()
-
     if(not err):
         return 1, result
     return 0, result
@@ -778,3 +778,59 @@ class AddLineToChangelistDescriptionThread(threading.Thread):
 class PerforceAddLineToChangelistDescriptionCommand(sublime_plugin.WindowCommand):
     def run(self):
         AddLineToChangelistDescriptionThread(self.window).start()
+
+# Submit section
+class SubmitThread(threading.Thread):
+    def __init__(self, window):
+        self.window = window
+        self.view = window.active_view()
+        threading.Thread.__init__(self)
+
+    def MakeChangelistsList(self):
+        success, rawchangelists = GetPendingChangelists();
+
+        resultchangelists = [];
+
+        if(success):
+            changelists = rawchangelists.splitlines()
+
+            # for each line, extract the change
+            for changelistline in changelists:
+                changelistlinesplit = changelistline.split(' ')
+                
+                # Insert at two because we receive the changelist in the opposite order and want to keep new and default on top
+                resultchangelists.insert(2, "Changelist " + changelistlinesplit[1] + " - " + ' '.join(changelistlinesplit[7:])) 
+
+        return resultchangelists
+
+    def run(self):
+        self.changelists_list = self.MakeChangelistsList()
+        
+        def show_quick_panel():
+            if not self.changelists_list:
+                sublime.error_message(__name__ + ': There are no changelists to list.')
+                return
+            self.window.show_quick_panel(self.changelists_list, self.on_done)
+
+        sublime.set_timeout(show_quick_panel, 10)
+
+    def on_done(self, picked):
+        if picked == -1:
+            return
+        changelist = self.changelists_list[picked]
+        changelistsections = changelist.split(' ')
+
+        # Check in the selected changelist
+        command = ConstructCommand('p4 submit -c ' + changelistsections[1]);   
+        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=None, shell=True)
+        result, err = p.communicate()
+    
+    def on_description_change(self, input):
+        pass
+
+    def on_description_cancel(self):
+        pass
+
+class PerforceSubmitCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        SubmitThread(self.window).start()

@@ -42,5 +42,9 @@
     {
         "caption": "Perforce: Add Line To Changelist Description",
         "command": "perforce_add_line_to_changelist_description"
+    },
+    {
+        "caption": "Perforce: Submit",
+        "command": "perforce_submit"
     }
 ]
