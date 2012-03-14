@@ -1,0 +1,4 @@
+Perforce integration 1.0.12 Changelog:
+
+Add
+- Added propper support for P4CONFIG 
