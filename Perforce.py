@@ -34,7 +34,7 @@ import threading
 global_folder = ''
 class PerforceP4CONFIGHandler(sublime_plugin.EventListener):  
     def on_activated(self, view):
-        if(view.file_name()):
+        if view.file_name():
             global global_folder
             global_folder, filename = os.path.split(view.file_name())
 
@@ -294,6 +294,13 @@ def Add(in_folder, in_filename):
 class PerforceAutoAdd(sublime_plugin.EventListener):
     preSaveIsFileInDepot = 0
     def on_pre_save(self, view):
+        # file already exists, no need to add
+        if view.file_name() and os.path.isfile(view.file_name()):
+            return
+
+        global global_folder
+        global_folder, filename = os.path.split(view.file_name())
+
         perforce_settings = sublime.load_settings('Perforce.sublime-settings')
 
         self.preSaveIsFileInDepot = 0
