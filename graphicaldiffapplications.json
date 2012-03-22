@@ -1,0 +1,20 @@
+{
+    "schema_version": "1.2",
+    "applications": [
+        {
+            "name": "P4 Diff",
+            "exename": "p4diff",
+            "diffcommand": "p4diff \"%depotfile_path\" \"%file_path\" -l \"%file_name in depot\" -e -1 4"
+        },
+        {
+            "name": "P4 Merge",
+            "exename": "p4merge",
+            "diffcommand": "p4merge \"%depotfile_path\" \"%file_path\""
+        },
+        {
+            "name": "Araxis P4 Diff",
+            "exename": "AraxisP4Diff",
+            "diffcommand": "AraxisP4Diff \"%depotfile_path\" \"%file_path\""
+        }
+    ]
+}

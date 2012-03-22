@@ -28,6 +28,10 @@
         "command": "perforce_graphical_diff_with_depot"
     },
     {
+        "caption": "Perforce: Select Graphical Diff Application",
+        "command": "perforce_select_graphical_diff_application"
+    },
+    {
         "caption": "Perforce: List Checkedout Files",
         "command": "perforce_list_checked_out_files"
     },

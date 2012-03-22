@@ -1,0 +1,8 @@
+Perforce integration 1.0.13 Changelog:
+
+Add
+- Added a way to Select which Graphical Diff Application to use
+
+Change
+- Started the Diff Application in another threat to free Sublime Text 2
+- Fixed typo

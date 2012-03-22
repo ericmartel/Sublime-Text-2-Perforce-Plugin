@@ -36,8 +36,18 @@
                         "caption": "Diff"
                     },
                     {
-                        "command": "perforce_graphical_diff_with_depot",
-                        "caption": "Graphical Diff with Depot"
+                        "caption": "Graphical Diff Against Depot",
+                        "children":
+                        [
+                            {
+                                "command": "perforce_graphical_diff_with_depot",
+                                "caption": "Diff"
+                            },
+                            {
+                                "command": "perforce_select_graphical_diff_application",
+                                "caption": "Select Diff Application"
+                            }
+                        ]
                     },
                     {
                         "command": "perforce_list_checked_out_files",

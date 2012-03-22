@@ -17,6 +17,7 @@
 # Eric Martel - source bash_profile when calling p4 on Mac OSX
 # Eric Martel - first implementation of submit
 # Eric Martel - Better handling of P4CONFIG files
+# Andrew Butt & Eric Martel - threading of the diff task and selector for the graphical diff application
 
 import sublime
 import sublime_plugin
@@ -26,6 +27,7 @@ import stat
 import subprocess
 import tempfile
 import threading
+import json
 
 # Plugin Settings are located in 'perforce.sublime-settings' make a copy in the User folder to keep changes
 
@@ -37,6 +39,9 @@ class PerforceP4CONFIGHandler(sublime_plugin.EventListener):
         if view.file_name():
             global global_folder
             global_folder, filename = os.path.split(view.file_name())
+
+# Executed at startup to store the path of the plugin... necessary to open files relative to the plugin
+perforceplugin_dir = os.getcwdu()
 
 # Utility functions
 def ConstructCommand(in_command):
@@ -442,42 +447,55 @@ class PerforceDiffCommand(sublime_plugin.TextCommand):
             WarnUser("View does not contain a file")
                     
 # Graphical Diff With Depot section
+class GraphicalDiffThread(threading.Thread):
+    def __init__(self, in_folder, in_filename, in_endlineseparator, in_command):
+        self.folder = in_folder
+        self.filename = in_filename
+        self.endlineseparator = in_endlineseparator
+        self.command = in_command
+        threading.Thread.__init__(self)
+
+    def run(self):
+        success, content = PerforceCommandOnFile("print", self.folder, self.filename)
+        if(not success):
+            return 0, content
+
+        # Create a temporary file to hold the depot version
+        depotFileName = "depot"+self.filename
+        tmp_file = open(os.path.join(tempfile.gettempdir(), depotFileName), 'w')
+
+        # Remove the first two lines of content
+        linebyline = content.splitlines();
+        content=self.endlineseparator.join(linebyline[1:]);
+
+        try:
+            tmp_file.write(content)
+        finally:
+            tmp_file.close()
+
+        # Launch P4Diff with both files and the same arguments P4Win passes it
+        diffCommand = self.command
+        diffCommand = diffCommand.replace('%depotfile_path', tmp_file.name)
+        diffCommand = diffCommand.replace('%depotfile_name', depotFileName)
+        diffCommand = diffCommand.replace('%file_path', os.path.join(self.folder, self.filename))
+        diffCommand = diffCommand.replace('%file_name', self.filename)
+
+        command = ConstructCommand(diffCommand)
+        
+        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
+        result, err = p.communicate()
+
+        # Clean up
+        os.unlink(tmp_file.name);
+
 def GraphicalDiffWithDepot(self, in_folder, in_filename):
     perforce_settings = sublime.load_settings('Perforce.sublime-settings')
+    diffcommand = perforce_settings.get('perforce_selectedgraphicaldiffapp_command')
+    if not diffcommand:
+        diffcommand = perforce_settings.get('perforce_default_graphical_diff_command')
+    GraphicalDiffThread(in_folder, in_filename, perforce_settings.get('perforce_end_line_separator'), diffcommand).start()
 
-    success, content = PerforceCommandOnFile("print", in_folder, in_filename)
-    if(not success):
-        return 0, content
-
-    # Create a temporary file to hold the depot version
-    depotFileName = "depot"+in_filename
-    tmp_file = open(os.path.join(tempfile.gettempdir(), depotFileName), 'w')
-
-    # Remove the first two lines of content
-    linebyline = content.splitlines();
-    content=perforce_settings.get('perforce_end_line_separator').join(linebyline[1:]);
-
-    try:
-        tmp_file.write(content)
-    finally:
-        tmp_file.close()
-
-    # Launch P4Diff with both files and the same arguments P4Win passes it
-    diffCommand = perforce_settings.get('perforce_graphical_diff_command')
-    diffCommand = diffCommand.replace('%depofile_path', tmp_file.name)
-    diffCommand = diffCommand.replace('%depofile_name', depotFileName)
-    diffCommand = diffCommand.replace('%file_path', os.path.join(in_folder, in_filename))
-    diffCommand = diffCommand.replace('%file_name', in_filename)
-
-    command = ConstructCommand(diffCommand)
-    
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
-    result, err = p.communicate()
-
-    # Clean up
-    os.unlink(tmp_file.name);
-
-    return -1, "Executing command " + command
+    return 1, "Launching thread for Graphical Diff"
 
 class PerforceGraphicalDiffWithDepotCommand(sublime_plugin.TextCommand):
     def run(self, edit): 
@@ -494,6 +512,36 @@ class PerforceGraphicalDiffWithDepotCommand(sublime_plugin.TextCommand):
         else:
             WarnUser("View does not contain a file")
 
+class PerforceSelectGraphicalDiffApplicationCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        diffapps = []
+        if os.path.exists(perforceplugin_dir + os.sep + 'graphicaldiffapplications.json'):
+            f = open(perforceplugin_dir + os.sep + 'graphicaldiffapplications.json')
+            applications = json.load(f)
+            f.close()
+
+            for entry in applications.get('applications'):
+                formattedentry = []
+                formattedentry.append(entry.get('name'))
+                formattedentry.append(entry.get('exename'))
+                diffapps.append(formattedentry)
+
+        self.window.show_quick_panel(diffapps, self.on_done)
+    def on_done(self, picked):
+        if picked == -1:
+            return
+        
+        f = open(perforceplugin_dir + os.sep + 'graphicaldiffapplications.json')
+        applications = json.load(f)
+        entry = applications.get('applications')[picked]
+        f.close()
+
+        sublime.status_message(__name__ + ': Please make sure that ' + entry['exename'] + " is reachable - you might need to restart Sublime Text 2.")
+
+        settings = sublime.load_settings('Perforce.sublime-settings')
+        settings.set('perforce_selectedgraphicaldiffapp', entry['name'])
+        settings.set('perforce_selectedgraphicaldiffapp_command', entry['diffcommand'])
+        sublime.save_settings('Perforce.sublime-settings')
 
 # List Checked Out Files section
 class ListCheckedOutFilesThread(threading.Thread):
