@@ -1,5 +1,9 @@
 [
     {
+        "caption": "Perforce: Login",
+        "command": "perforce_login"
+    },
+    {
         "caption": "Perforce: Checkout",
         "command": "perforce_checkout"
     },
@@ -50,5 +54,17 @@
     {
         "caption": "Perforce: Submit",
         "command": "perforce_submit"
+    },
+    {
+        "caption": "Perforce: Logout",
+        "command": "perforce_logout"
+    },
+    {
+        "caption": "Perforce: Shelve Changelist",
+        "command": "perforce_shelve_cl"
+    },
+    {
+        "caption": "Perforce: Unshelve Changelist",
+        "command": "perforce_unshelve_cl"
     }
 ]

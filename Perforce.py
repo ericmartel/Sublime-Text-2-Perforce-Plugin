@@ -28,7 +28,11 @@ import subprocess
 import tempfile
 import threading
 import json
-
+import sys
+try:
+    from Queue import Queue, Empty
+except ImportError:
+    from queue import Queue, Empty  # python 3.x
 # Plugin Settings are located in 'perforce.sublime-settings' make a copy in the User folder to keep changes
 
 # global variable used when calling p4 - it stores the path of the file in the current view, used to determine with P4CONFIG to use
@@ -899,3 +903,104 @@ class SubmitThread(threading.Thread):
 class PerforceSubmitCommand(sublime_plugin.WindowCommand):
     def run(self):
         SubmitThread(self.window).start()
+
+
+
+class PerforceLogoutCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        try:
+            command = ConstructCommand("p4 set P4PASSWD=")
+            p = subprocess.Popen(command, stdin=subprocess.PIPE,stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)            
+            p.communicate()
+        except ValueError:
+            pass
+
+class PerforceLoginCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        self.window.show_input_panel("Enter Perforce Password", "", self.on_done, None, None)
+
+    def on_done(self, password):
+        try:
+            command = ConstructCommand("p4 logout")
+            p = subprocess.Popen(command, stdin=subprocess.PIPE,stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)            
+            p.communicate()
+            #unset var 
+            command = ConstructCommand("p4 set P4PASSWD=" + password)
+            p = subprocess.Popen(command, stdin=subprocess.PIPE,stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)            
+            p.communicate()
+        except ValueError:
+            pass
+
+class PerforceUnshelveClCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        try:
+            ShelveClCommand(self.window, False).start()
+        except:
+            WarnUser("Unknown Error, does the included P4 Version support Shelve?")
+            return -1
+class PerforceShelveClCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        try:
+            ShelveClCommand(self.window, True).start()
+        except:
+            WarnUser("Unknown Error, does the included P4 Version support Shelve?")
+            return -1
+
+class ShelveClCommand(threading.Thread):
+    def __init__(self, window, shelve=True):
+        self.shelve = shelve
+        self.window = window
+        threading.Thread.__init__(self)
+
+    def run(self):
+        self.changelists_list = self.MakeChangelistsList()
+        def show_quick_panel():
+            if not self.changelists_list:
+                sublime.error_message(__name__ + ': There are no changelists to list.')
+                return
+            self.window.show_quick_panel(self.changelists_list, self.on_done)
+
+        sublime.set_timeout(show_quick_panel, 10)
+
+    def on_done(self, picked):
+        if picked == -1:
+            return
+        changelistlist = self.changelists_list[picked].split(' ')
+
+
+        changelist = 'Default'
+        if(len(changelistlist) > 1): # Numbered changelist
+            changelist = changelistlist[1]
+        else:
+            changelist = changelistlist[0]
+
+        print changelist
+
+        
+        if self.shelve:
+            cmdString = "shelve -c" + changelist
+        else:
+            cmdString = "unshelve -s" + changelist + " -f"
+        command = ConstructCommand("p4 " + cmdString)
+        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
+        result, err = p.communicate()
+        print result
+        if(err):
+            WarnUser("usererr " + err.strip())
+            return -1 
+
+    def MakeChangelistsList(self):
+        success, rawchangelists = GetPendingChangelists();
+
+        resultchangelists = []
+
+        if(success):
+            changelists = rawchangelists.splitlines()
+
+            # for each line, extract the change
+            for changelistline in changelists:
+                changelistlinesplit = changelistline.split(' ')
+                
+                resultchangelists.insert(0, "Changelist " + changelistlinesplit[1] + " - " + ' '.join(changelistlinesplit[7:])) 
+
+        return resultchangelists

@@ -10,6 +10,10 @@
         "children":
         [
             {
+                "command": "perforce_login",
+                "caption": "Login"
+            },
+            {
                 "command": "perforce_add",
                 "caption": "Add"
             },
@@ -66,6 +70,24 @@
             {
                 "command": "perforce_submit",
                 "caption": "Submit"
+            },
+            {
+                "caption": "Shelve",
+                "children":
+                [
+                    {
+                        "command": "perforce_shelve_cl",
+                        "caption": "Shelve Changelist"
+                    },
+                    {
+                        "command": "perforce_unshelve_cl",
+                        "caption": "Unshelve Changelist"
+                    }
+                ]
+            },
+            {
+                "command": "perforce_logout",
+                "caption": "Logout"
             }
         ]
     },
