@@ -18,6 +18,7 @@
 # Eric Martel - first implementation of submit
 # Eric Martel - Better handling of P4CONFIG files
 # Andrew Butt & Eric Martel - threading of the diff task and selector for the graphical diff application
+# Eric Martel - Added the possibility to Submit the default changelist
 
 import sublime
 import sublime_plugin
@@ -38,6 +39,7 @@ except ImportError:
 # global variable used when calling p4 - it stores the path of the file in the current view, used to determine with P4CONFIG to use
 # whenever a view is selected, the variable gets updated
 global_folder = ''
+
 class PerforceP4CONFIGHandler(sublime_plugin.EventListener):  
     def on_activated(self, view):
         if view.file_name():
@@ -585,9 +587,9 @@ class ListCheckedOutFilesThread(threading.Thread):
 
     def MakeFileListFromChangelist(self, in_changelistline):
         files_list = []
-
+        currentuser = GetUserFromClientspec()
         # Launch p4 opened to retrieve all files from changelist
-        command = ConstructCommand('p4 opened -c ' + in_changelistline[1])
+        command = ConstructCommand('p4 opened -c ' + in_changelistline[1] + ' -u ' + currentuser)
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
         result, err = p.communicate()
         if(not err):
@@ -607,6 +609,7 @@ class ListCheckedOutFilesThread(threading.Thread):
                 if(localfile != 0):
                     file_entry.append(localfile)
                     files_list.append(file_entry)
+
         return files_list
 
     def MakeCheckedOutFileList(self):
@@ -617,7 +620,8 @@ class ListCheckedOutFilesThread(threading.Thread):
             return files_list
 
         # Launch p4 changes to retrieve all the pending changelists
-        command = ConstructCommand('p4 changes -s pending -u ' + currentuser);   
+        command = ConstructCommand('p4 changes -s pending -u ' + currentuser);
+
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
         result, err = p.communicate()
 
@@ -879,17 +883,24 @@ class SubmitThread(threading.Thread):
     def MakeChangelistsList(self):
         success, rawchangelists = GetPendingChangelists();
 
-        resultchangelists = [];
+        resultchangelists = ['Default'];
 
-        if(success):
+        currentuser = GetUserFromClientspec();
+        command = ConstructCommand('p4 opened -c default -u ' + currentuser)
+        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
+        result, err = p.communicate()
+        if err:
+            resultchangelists.pop()
+
+        if success:
             changelists = rawchangelists.splitlines()
 
             # for each line, extract the change
             for changelistline in changelists:
                 changelistlinesplit = changelistline.split(' ')
                 
-                # Insert at two because we receive the changelist in the opposite order and want to keep new and default on top
-                resultchangelists.insert(2, "Changelist " + changelistlinesplit[1] + " - " + ' '.join(changelistlinesplit[7:])) 
+                # Insert at two because we receive the changelist in the opposite order and want to keep default on top
+                resultchangelists.insert(1, "Changelist " + changelistlinesplit[1] + " - " + ' '.join(changelistlinesplit[7:])) 
 
         return resultchangelists
 
@@ -910,8 +921,12 @@ class SubmitThread(threading.Thread):
         changelist = self.changelists_list[picked]
         changelistsections = changelist.split(' ')
 
+        command = ''
         # Check in the selected changelist
-        command = ConstructCommand('p4 submit -c ' + changelistsections[1]);   
+        if changelistsections[0] != 'Default':
+            command = ConstructCommand('p4 submit -c ' + changelistsections[1]);   
+        else:
+            command = ConstructCommand('p4 submit')
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
         result, err = p.communicate()
     
@@ -924,7 +939,6 @@ class SubmitThread(threading.Thread):
 class PerforceSubmitCommand(sublime_plugin.WindowCommand):
     def run(self):
         SubmitThread(self.window).start()
-
 
 
 class PerforceLogoutCommand(sublime_plugin.WindowCommand):
@@ -994,10 +1008,7 @@ class ShelveClCommand(threading.Thread):
             changelist = changelistlist[1]
         else:
             changelist = changelistlist[0]
-
-        print changelist
-
-        
+     
         if self.shelve:
             cmdString = "shelve -c" + changelist
         else:
@@ -1005,7 +1016,7 @@ class ShelveClCommand(threading.Thread):
         command = ConstructCommand("p4 " + cmdString)
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
         result, err = p.communicate()
-        print result
+
         if(err):
             WarnUser("usererr " + err.strip())
             return -1 
