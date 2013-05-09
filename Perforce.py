@@ -142,6 +142,8 @@ def IsFolderUnderClientRoot(in_folder):
         return 0
 
     clientroot = clientroot.lower()
+    if(clientroot == "null"):
+        return 1
 
     # convert all paths to "os.sep" slashes 
     convertedfolder = in_folder.lower().replace('\\', os.sep).replace('/', os.sep);
@@ -580,6 +582,9 @@ class ListCheckedOutFilesThread(threading.Thread):
         clientroot = GetClientRoot(os.path.dirname(in_filename))
         if(clientroot == -1):
             return 0
+
+        if(clientroot == "null"):
+            return in_filename
 
         filename = clientroot + os.sep + in_filename.replace('\\', os.sep).replace('/', os.sep)
 
