@@ -675,7 +675,10 @@ def CreateChangelist(description):
         return 0, err
 
     # Find the description field and modify it
-    result = result.replace("<enter description here>", description)
+    desclabel = 'Description:' + os.linesep
+    descindex = result.find(desclabel) + len(desclabel)
+    descend = result.find(os.linesep*2, descindex)
+    result = result[0:descindex] + '\t' + description + result[descend:]
 
     # Remove all files from the query, we want them to stay in Default
     filesindex = result.rfind("Files:")
