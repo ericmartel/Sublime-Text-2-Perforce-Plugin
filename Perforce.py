@@ -142,6 +142,8 @@ def IsFolderUnderClientRoot(in_folder):
         return 0
 
     clientroot = clientroot.lower()
+    if(clientroot == "null"):
+        return 1
 
     # convert all paths to "os.sep" slashes 
     convertedfolder = in_folder.lower().replace('\\', os.sep).replace('/', os.sep);
@@ -581,6 +583,9 @@ class ListCheckedOutFilesThread(threading.Thread):
         if(clientroot == -1):
             return 0
 
+        if(clientroot == "null"):
+            return in_filename
+
         filename = clientroot + os.sep + in_filename.replace('\\', os.sep).replace('/', os.sep)
 
         return filename
@@ -670,7 +675,10 @@ def CreateChangelist(description):
         return 0, err
 
     # Find the description field and modify it
-    result = result.replace("<enter description here>", description)
+    desclabel = 'Description:' + os.linesep
+    descindex = result.find(desclabel) + len(desclabel)
+    descend = result.find(os.linesep*2, descindex)
+    result = result[0:descindex] + '\t' + description + result[descend:]
 
     # Remove all files from the query, we want them to stay in Default
     filesindex = result.rfind("Files:")
