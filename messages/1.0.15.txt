@@ -1,0 +1,4 @@
+Perforce integration 1.0.15 Changelog:
+
+Bugfix
+- Reverted a change that broke the Mac version

@@ -52,7 +52,7 @@ perforceplugin_dir = os.getcwdu()
 # Utility functions
 def ConstructCommand(in_command):
     command = ''
-    if(sublime.platform() == "osx" and os.path.exists('~/.bash_profile')):
+    if(sublime.platform() == "osx"):
         command = 'source ~/.bash_profile && '
     # Revert change until threading is fixed
     # command = getPerforceConfigFromPreferences(command)
