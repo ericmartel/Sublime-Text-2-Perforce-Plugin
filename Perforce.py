@@ -60,7 +60,6 @@ def ConstructCommand(in_command):
         command = 'source ~/.bash_profile && '
     # Revert change until threading is fixed
     # command = getPerforceConfigFromPreferences(command)
-    command += in_command + ' && p4 tickets'
     LogResults(True, command)
     return command
 
