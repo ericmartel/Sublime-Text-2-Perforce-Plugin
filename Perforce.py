@@ -60,6 +60,7 @@ def ConstructCommand(in_command):
         command = 'source ~/.bash_profile && '
     # Revert change until threading is fixed
     # command = getPerforceConfigFromPreferences(command)
+    command = command + in_command
     return command
 
 def getPerforceConfigFromPreferences(command):
