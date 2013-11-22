@@ -1,11 +1,11 @@
 {
-	"perforce_auto_checkout": true, // when true, checkout will occur depending on the modify/save settings
-	"perforce_auto_checkout_on_save": true,
-	"perforce_auto_checkout_on_modified": false,
-	"perforce_auto_add": true, // when true, any file within the client spec that doesn't exist during the presave will be added
-	"perforce_warnings_enabled": true, // will output messages when warnings happen
-	"perforce_end_line_separator": "\n", // used to reconstruct the depot file after breaking it up to remove the first line
-	"perforce_log_warnings_to_status": true, // used to redirect logs to the status bar instead. The standard output is too big for the line (can be multi-line with the raw output of p4)
-	"perforce_default_graphical_diff_command": "p4diff \"%depotfile_path\" \"%file_path\" -l \"%file_name in depot\" -e -1 4", // used only if Select Graphical Diff Application is not called
-    "perforce_p4env": "~/.p4env"
+    "perforce_auto_checkout": true, // when true, checkout will occur depending on the modify/save settings
+    "perforce_auto_checkout_on_save": true,
+    "perforce_auto_checkout_on_modified": false,
+    "perforce_auto_add": true, // when true, any file within the client spec that doesn't exist during the presave will be added
+    "perforce_warnings_enabled": true, // will output messages when warnings happen
+    "perforce_end_line_separator": "\n", // used to reconstruct the depot file after breaking it up to remove the first line
+    "perforce_log_warnings_to_status": true, // used to redirect logs to the status bar instead. The standard output is too big for the line (can be multi-line with the raw output of p4)
+    // "perforce_p4env": "~/.p4env", // optional environent file to source rather than ~/.bash_profile
+    "perforce_default_graphical_diff_command": "p4diff \"%depotfile_path\" \"%file_path\" -l \"%file_name in depot\" -e -1 4" // used only if Select Graphical Diff Application is not called
 }
