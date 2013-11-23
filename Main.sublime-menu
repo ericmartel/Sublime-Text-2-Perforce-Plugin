@@ -1,5 +1,40 @@
 [
     {
+        "id": "preferences",
+        "children":
+        [
+            {
+                "caption": "Package Settings",
+                "id": "package-settings",
+                "children":
+                [
+                    {
+                        "caption": "Perforce",
+                        "children":
+                        [
+                            {
+                                "caption": "Settings – Default",
+                                "command": "open_file",
+                                "args":
+                                {
+                                    "file": "${packages}/Perforce/Perforce.sublime-settings"
+                                }
+                            },
+                            {
+                                "caption": "Settings – User",
+                                "command": "open_file",
+                                "args":
+                                {
+                                    "file": "${packages}/User/Perforce.sublime-settings"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    {
         "caption": "Tools",
         "mnemonic": "t",
         "id": "tools",

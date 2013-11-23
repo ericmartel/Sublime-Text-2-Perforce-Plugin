@@ -6,5 +6,6 @@
 	"perforce_warnings_enabled": true, // will output messages when warnings happen
 	"perforce_end_line_separator": "\n", // used to reconstruct the depot file after breaking it up to remove the first line
 	"perforce_log_warnings_to_status": true, // used to redirect logs to the status bar instead. The standard output is too big for the line (can be multi-line with the raw output of p4)
+	// "perforce_p4env": "~/.p4env", // optional environent file to source rather than ~/.bash_profile
 	"perforce_default_graphical_diff_command": "p4diff \"%depotfile_path\" \"%file_path\" -l \"%file_name in depot\" -e -1 4" // used only if Select Graphical Diff Application is not called
 }
