@@ -19,6 +19,7 @@
 # Eric Martel - Better handling of P4CONFIG files
 # Andrew Butt & Eric Martel - threading of the diff task and selector for the graphical diff application
 # Eric Martel - Added the possibility to Submit the default changelist
+# Jonathan Felchlin - Added a way to pass p4env parameters to the command building function
 
 import sublime
 import sublime_plugin
