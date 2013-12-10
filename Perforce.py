@@ -50,19 +50,21 @@ class PerforceP4CONFIGHandler(sublime_plugin.EventListener):
 # Executed at startup to store the path of the plugin... necessary to open files relative to the plugin
 perforceplugin_dir = os.getcwdu()
 
-# Utility functions
-def ConstructCommand(in_command):
+command_prefix = ""
+def PrepareCommand():
     perforce_settings = sublime.load_settings('Perforce.sublime-settings')
     p4Env = perforce_settings.get('perforce_p4env')
-    command = ''
+    command_prefix = ''
     if(p4Env and p4Env != ''):
-        command = 'source ' + p4Env + ' && '
+        command_prefix = 'source ' + p4Env + ' && '
     elif(sublime.platform() == "osx"):
-        command = 'source ~/.bash_profile && '
+        command_prefix = 'source ~/.bash_profile && '
     # Revert change until threading is fixed
-    # command = getPerforceConfigFromPreferences(command)
-    command += in_command
-    return command
+    # command_prefix = getPerforceConfigFromPreferences(command)
+
+# Utility functions
+def ConstructCommand(in_command):
+    return command_prefix + in_command;
 
 def getPerforceConfigFromPreferences(command):
     perforce_settings = sublime.load_settings('Perforce.sublime-settings')
@@ -303,6 +305,7 @@ class PerforceAutoCheckout(sublime_plugin.EventListener):
             return
               
         if(view.is_dirty()):
+            PrepareCommand();
             success, message = Checkout(view.file_name())
             LogResults(success, message);
 
@@ -314,12 +317,14 @@ class PerforceAutoCheckout(sublime_plugin.EventListener):
             return
               
         if(view.is_dirty()):
+            PrepareCommand();
             success, message = Checkout(view.file_name())
             LogResults(success, message);
 
 class PerforceCheckoutCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if(self.view.file_name()):
+            PrepareCommand();
             success, message = Checkout(self.view.file_name())
             LogResults(success, message)
         else:
@@ -349,11 +354,14 @@ class PerforceAutoAdd(sublime_plugin.EventListener):
             WarnUser("Auto Add disabled")
             return
 
+        PrepareCommand();
+
         folder_name, filename = os.path.split(view.file_name())
         self.preSaveIsFileInDepot = IsFileInDepot(folder_name, filename)
 
     def on_post_save(self, view):
         if(self.preSaveIsFileInDepot == -1):
+            PrepareCommand();
             folder_name, filename = os.path.split(view.file_name())
             success, message = Add(folder_name, filename)
             LogResults(success, message)
@@ -361,6 +369,8 @@ class PerforceAutoAdd(sublime_plugin.EventListener):
 class PerforceAddCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if(self.view.file_name()):
+            PrepareCommand();
+
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -398,6 +408,8 @@ class PerforceRenameCommand(sublime_plugin.WindowCommand):
             self.on_done, self.on_change, self.on_cancel)
 
     def on_done(self, input):
+        PrepareCommand();
+
         success, message = Rename(self.window.active_view().file_name(), input)
         if(success):
             self.window.run_command('close')
@@ -424,6 +436,8 @@ def Delete(in_folder, in_filename):
 class PerforceDeleteCommand(sublime_plugin.WindowCommand):
     def run(self):
         if(self.window.active_view().file_name()):
+            PrepareCommand();
+
             folder_name, filename = os.path.split(self.window.active_view().file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -446,6 +460,8 @@ def Revert(in_folder, in_filename):
 class PerforceRevertCommand(sublime_plugin.TextCommand):
     def run_(self, args): # revert cannot be called when an Edit object exists, manually handle the run routine
         if(self.view.file_name()):
+            PrepareCommand();
+
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -468,6 +484,8 @@ def Diff(in_folder, in_filename):
 class PerforceDiffCommand(sublime_plugin.TextCommand):
     def run(self, edit): 
         if(self.view.file_name()):
+            PrepareCommand();
+
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -534,6 +552,8 @@ def GraphicalDiffWithDepot(self, in_folder, in_filename):
 class PerforceGraphicalDiffWithDepotCommand(sublime_plugin.TextCommand):
     def run(self, edit): 
         if(self.view.file_name()):
+            PrepareCommand();
+
             folder_name, filename = os.path.split(self.view.file_name())
 
             if(IsFileInDepot(folder_name, filename)):
@@ -667,6 +687,8 @@ class ListCheckedOutFilesThread(threading.Thread):
 
 class PerforceListCheckedOutFilesCommand(sublime_plugin.WindowCommand):
     def run(self):
+        PrepareCommand();
+
         ListCheckedOutFilesThread(self.window).start()
 
 # Create Changelist section
@@ -717,6 +739,8 @@ class PerforceCreateChangelistCommand(sublime_plugin.WindowCommand):
             self.on_done, self.on_change, self.on_cancel)
 
     def on_done(self, input):
+        PrepareCommand();
+
         success, message = CreateChangelist(input)
         LogResults(success, message)
 
@@ -811,6 +835,8 @@ class ListChangelistsAndMoveFileThread(threading.Thread):
 
 class PerforceMoveCurrentFileToChangelistCommand(sublime_plugin.WindowCommand):
     def run(self):
+        PrepareCommand();
+
         # first, test if the file is under the client root
         folder_name, filename = os.path.split(self.window.active_view().file_name())
         isInDepot = IsFileInDepot(folder_name, filename)
@@ -884,6 +910,8 @@ class AddLineToChangelistDescriptionThread(threading.Thread):
 
 class PerforceAddLineToChangelistDescriptionCommand(sublime_plugin.WindowCommand):
     def run(self):
+        PrepareCommand();
+
         AddLineToChangelistDescriptionThread(self.window).start()
 
 # Submit section
@@ -951,11 +979,15 @@ class SubmitThread(threading.Thread):
 
 class PerforceSubmitCommand(sublime_plugin.WindowCommand):
     def run(self):
+        PrepareCommand();
+
         SubmitThread(self.window).start()
 
 
 class PerforceLogoutCommand(sublime_plugin.WindowCommand):
     def run(self):
+        PrepareCommand();
+
         try:
             command = ConstructCommand("p4 set P4PASSWD=")
             p = subprocess.Popen(command, stdin=subprocess.PIPE,stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)            
@@ -969,6 +1001,8 @@ class PerforceLoginCommand(sublime_plugin.WindowCommand):
 
     def on_done(self, password):
         try:
+            PrepareCommand();
+
             command = ConstructCommand("p4 logout")
             p = subprocess.Popen(command, stdin=subprocess.PIPE,stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)            
             p.communicate()
@@ -982,6 +1016,8 @@ class PerforceLoginCommand(sublime_plugin.WindowCommand):
 class PerforceUnshelveClCommand(sublime_plugin.WindowCommand):
     def run(self):
         try:
+            PrepareCommand();
+
             ShelveClCommand(self.window, False).start()
         except:
             WarnUser("Unknown Error, does the included P4 Version support Shelve?")
@@ -989,6 +1025,8 @@ class PerforceUnshelveClCommand(sublime_plugin.WindowCommand):
 class PerforceShelveClCommand(sublime_plugin.WindowCommand):
     def run(self):
         try:
+            PrepareCommand();
+
             ShelveClCommand(self.window, True).start()
         except:
             WarnUser("Unknown Error, does the included P4 Version support Shelve?")
