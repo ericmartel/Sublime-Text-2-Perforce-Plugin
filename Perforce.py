@@ -54,6 +54,7 @@ command_prefix = ""
 def PrepareCommand():
     perforce_settings = sublime.load_settings('Perforce.sublime-settings')
     p4Env = perforce_settings.get('perforce_p4env')
+    global command_prefix
     command_prefix = ''
     if(p4Env and p4Env != ''):
         command_prefix = 'source ' + p4Env + ' && '
