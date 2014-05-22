@@ -174,6 +174,7 @@ def IsFileInDepot(in_folder, in_filename):
             return -1 # will be in the depot, it's being added
         else:
             return 0
+
 def IsFileOpenedOnClient(in_filename):
     command = ConstructCommand('p4 opened "' + in_filename + '"')
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
@@ -769,7 +770,6 @@ def MoveFileToChangelist(in_filename, in_changelist):
         in_command = 'edit'
 
     command = ConstructCommand('p4 ' + in_command + ' -c ' + in_changelist + ' "' + filename + '"')
-    print command
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
     result, err = p.communicate()
 
