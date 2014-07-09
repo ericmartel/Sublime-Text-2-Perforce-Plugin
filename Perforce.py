@@ -175,6 +175,15 @@ def IsFileInDepot(in_folder, in_filename):
         else:
             return 0
 
+def IsFileOpenedOnClient(in_filename):
+    command = ConstructCommand('p4 opened "' + in_filename + '"')
+    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
+    result, err = p.communicate()
+
+    if(err):
+        return 0
+    return 1
+
 def GetPendingChangelists():
     # Launch p4 changes to retrieve all the pending changelists
     currentuser = GetUserFromClientspec()
@@ -754,14 +763,19 @@ class PerforceCreateChangelistCommand(sublime_plugin.WindowCommand):
 # Move Current File to Changelist
 def MoveFileToChangelist(in_filename, in_changelist):
     folder_name, filename = os.path.split(in_filename)
+    in_command = 'reopen'
 
-    command = ConstructCommand('p4 reopen -c ' + in_changelist + ' "' + filename + '"')
+    # open and move file if it's not opened else just move
+    if(not IsFileOpenedOnClient(in_filename)):
+        in_command = 'edit'
+
+    command = ConstructCommand('p4 ' + in_command + ' -c ' + in_changelist + ' "' + filename + '"')
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=global_folder, shell=True)
     result, err = p.communicate()
 
     if(err):
         return 0, err
-    
+
     return 1, result
 
 class ListChangelistsAndMoveFileThread(threading.Thread):
