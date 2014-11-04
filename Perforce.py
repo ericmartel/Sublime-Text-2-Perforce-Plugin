@@ -122,7 +122,7 @@ def GetClientRoot(in_dir):
     
     # locate the line containing "Client root: " and extract the following path
     startindex = result.find("Client unknown.")
-    if(startindex == 0)
+    if(startindex == 0):
         return -1
 
     startindex = result.find("Client root: ")
