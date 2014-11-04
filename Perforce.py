@@ -121,6 +121,10 @@ def GetClientRoot(in_dir):
         return -1 
     
     # locate the line containing "Client root: " and extract the following path
+    startindex = result.find("Client unknown.")
+    if(startindex == 0)
+        return -1
+
     startindex = result.find("Client root: ")
     if(startindex == -1):
         # sometimes the clientspec is not displayed 
